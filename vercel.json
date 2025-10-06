@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/webhook.py": {
+      "runtime": "python3.9"
+    }
+  }
+}
