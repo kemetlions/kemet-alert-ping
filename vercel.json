@@ -1,7 +1,8 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/webhook.py": {
-      "runtime": "python3.9"
+    "api/**/*.py": {
+      "runtime": "python3.12"
     }
   }
 }
