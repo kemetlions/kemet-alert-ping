@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 # Tus secretos (para el grupo PING)
 TELEGRAM_TOKEN = "7959634574:AAHSjTKvWLuakrAKxU4GQ4err6xOzasy59E"
-CHAT_ID = "5870967116"  # Tu chat personal para prueba
+CHAT_ID = "-100096725017"  # CHAT_ID del grupo PING
 
 @app.route('/api/webhook', methods=['POST'])
 def webhook():
