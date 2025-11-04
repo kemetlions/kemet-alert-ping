@@ -1,52 +1,61 @@
 from flask import Flask, request, jsonify
 import requests
+import os
+from datetime import datetime
 import traceback
 
 app = Flask(__name__)
 
-# Tus secretos (para el grupo PING)
-TELEGRAM_TOKEN = "7959634574:AAHSjTKvWLuakrAKxU4GQ4err6xOzasy59E"
-CHAT_ID = "-1002966725017"  # CHAT_ID del grupo PING (confirmado en getUpdates)
+# Env vars para Telegram
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+CHAT_ID = os.environ.get('CHAT_ID')
+TELEGRAM_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+if not BOT_TOKEN or not CHAT_ID:
+    print("❌ ERRO: BOT_TOKEN ou CHAT_ID faltando! Verifique Env Vars no Render.")
 
 @app.route('/api/webhook', methods=['POST'])
 def webhook():
     try:
-        print("Request recibido – Headers:", dict(request.headers))
-        data = request.get_json(force=True)
-        print("Data recibida:", data)
+        # Lee o body como texto raw (para text/plain de TradingView)
+        raw_body = request.get_data(as_text=True)  # Decodifica UTF-8 automaticamente
+        print(f"[{datetime.now()}] Body raw recebido: {raw_body[:200]}...")  # Log truncado
         
-        if not data:
-            print("Error: No data")
-            return jsonify({'error': 'No data'}), 400
+        # Se for vazio ou erro, usa fallback
+        if not raw_body or raw_body.strip() == '':
+            raw_body = "Alerta vazia de TradingView"
         
-        # Saca el mensaje del aviso
-        mensaje = data.get('mensaje', '¡Alerta de Kemet! Algo pasó en el mercado. 🦁')
-        print("Mensaje extraído:", mensaje)
+        # Formata para Telegram (adiciona timestamp e formatação)
+        formatted_msg = f"🔔 *Alerta TradingView ({datetime.now().strftime('%H:%M UTC')}):*\n\n{raw_body}\n\n*De:* Lista de Selecionados | *IP:* {request.remote_addr}"
         
-        # Si no hay 'mensaje', usa el texto completo
-        if not mensaje:
-            mensaje = str(data)
+        print(f"[{datetime.now()}] Enviando para TG: {formatted_msg[:100]}...")
         
-        print("Enviando a Telegram – URL:", f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage", "Params:", {'chat_id': CHAT_ID, 'text': mensaje, 'parse_mode': 'HTML'})
-        
-        # Manda el mensaje a Telegram (al grupo PING)
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        params = {
+        # Envia para Telegram
+        payload = {
             'chat_id': CHAT_ID,
-            'text': mensaje,
-            'parse_mode': 'HTML'  # Para emojis y negritas
+            'text': formatted_msg,
+            'parse_mode': 'Markdown'
         }
-        response = requests.post(url, params=params)
-        print("Response de Telegram:", response.status_code, response.text)
+        tg_response = requests.post(TELEGRAM_URL, json=payload, timeout=10)
         
-        if response.status_code == 200:
-            print("Éxito – Mensaje enviado!")
-            return jsonify({'ok': True, 'mensaje_enviado': mensaje}), 200
+        print(f"[{datetime.now()}] Resposta TG: Status {tg_response.status_code} | Texto: {tg_response.text[:200]}")
+        
+        if tg_response.status_code == 200:
+            print("✅ Alerta enviada com sucesso para Telegram!")
+            return jsonify({"status": "OK", "message_preview": raw_body[:50] + "..."}), 200
         else:
-            print("Fallo en Telegram:", response.status_code, response.text)
-            return jsonify({'error': f'Fallo en Telegram: {response.text}'}), 500
+            print(f"❌ Erro no Telegram: {tg_response.status_code} - {tg_response.text}")
+            return jsonify({"error": "Falha no Telegram", "details": tg_response.text}), 500
             
     except Exception as e:
-        error_msg = traceback.format_exc()
-        print("Error en webhook:", error_msg)
-        return jsonify({'error': str(e)}), 500
+        error_log = traceback.format_exc()
+        print(f"❌ Erro no webhook: {e}\n{error_log}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/', methods=['GET'])
+def health_check():
+    return f"Webhook ativo! Hora: {datetime.now().isoformat()}. BOT_TOKEN ok: {bool(BOT_TOKEN)}. Teste: Envie POST para /api/webhook."
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
