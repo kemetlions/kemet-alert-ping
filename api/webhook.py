@@ -7,7 +7,7 @@ import traceback
 app = Flask(__name__)
 
 # Secrets como env vars (seguro – configura em Render > Environment)
-TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '7959634574:AAHSjTKvWLuakrAKxU4GQ4err6xOzasy59E')  # Fallback local
+TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '7959634574:AAHBh7JZnCpwoCSqoUfqgsTaLDjygNG7FqA')  # Fallback local
 CHAT_ID = os.environ.get('CHAT_ID', '-1002966725017')  # Fallback
 TELEGRAM_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
